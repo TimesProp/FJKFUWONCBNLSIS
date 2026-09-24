@@ -1,81 +1,281 @@
-# Type7: TimesNet with Dual-Hierarchy Convolution
+# Reproducibility Package
 
-独立、精简的 Type7 训练代码。模型来自原实验目录的 `models/type7.py`，训练与评估来自 `TimesNetDHAblationMulti.py`。仅保留 Type7 及其必要依赖；整个目录可以单独复制、运行或上传 GitHub。
+This repository contains a standalone and simplified implementation of the model used in the submitted paper. It includes only the model, the required forecasting backbone, the necessary layers, the datasets, and the training and evaluation code.
 
-## 文件结构
+The directory can be copied and executed independently. It does not depend on any external project directory or additional local source files.
+
+## File Structure
 
 ```text
 mini/
-├── datasets/            # 8 组完整 SFD 数据、对应层级矩阵、数据校验清单
-├── type7.py             # 双层级卷积与误差感知残差修正模型
-├── backbone.py          # TimesNet 主干、层级一致性损失、BU 辅助损失
-├── layers/              # 必需的 embedding 和 inception 层
-├── train.py             # 训练、早停、最佳权重加载、测试及多种子汇总
+├── datasets/            # Eight complete datasets, hierarchy matrices, and data validation files
+├── model.py             # Model implementation
+├── backbone.py          # Forecasting backbone and auxiliary hierarchical losses
+├── layers/              # Required embedding and convolution layers
+├── train.py             # Training, early stopping, evaluation, and multi-seed aggregation
 ├── requirements.txt
-├── LICENSE              # 保留原实验仓库许可证
+├── LICENSE
 └── .gitignore
 ```
 
-## 安装与运行
+## Installation and Execution
 
-在 Python 3.11 环境中，进入本目录：
+The code was tested with Python 3.11.
+
+Enter this directory and install the required packages:
 
 ```bash
 python -m pip install -r requirements.txt
+```
+
+A small CPU test can be used to verify the installation and the complete training pipeline:
+
+```bash
 python train.py --smoke-test --device cpu
+```
+
+To run the default experiment:
+
+```bash
 python train.py
 ```
 
-默认自动选择 CUDA（可用时）或 CPU。依赖版本取自本机通过验证的环境；GPU 训练还需匹配的 CUDA 版 PyTorch 与驱动。代码不依赖父目录、DUET 框架或原实验环境中的其他 Python 文件。
+The training script automatically uses CUDA when it is available and otherwise uses the CPU. GPU execution requires a compatible CUDA-enabled PyTorch installation and GPU driver.
 
-完整训练默认运行 3 个种子（42、43、44），每次最多 50 轮，验证集连续 3 轮未改善则早停。默认数据为 `mixedhumid_sfd`。原训练文件默认模型原为 `type4`，此版本按目标模型固定为 **Type7**。
+The code is self-contained and does not depend on source files outside this directory.
+
+By default, complete training uses three random seeds:
+
+```text
+42, 43, 44
+```
+
+Each run is trained for at most 50 epochs. Early stopping is applied when the validation loss does not improve for three consecutive epochs.
+
+The default dataset is:
+
+```text
+mixedhumid_sfd
+```
+
+## Example Commands
+
+Switch to another dataset:
 
 ```bash
-# 切换数据集
 python train.py --dataset cold_sfd
+```
 
-# 单次训练 / 自定义参数
+Run a single experiment with customized settings:
+
+```bash
 python train.py --runs 1 --epochs 50 --seq 24 --pred-len 24 --dh-steps 1 --seed 42
+```
 
-# 指定输出位置，避免覆盖其他配置的结果
+Specify a separate output directory:
+
+```bash
 python train.py --dataset marine_sfd --output-dir outputs/marine
+```
 
+Display all available command-line options:
+
+```bash
 python train.py --help
 ```
 
-数据路径始终相对于 `train.py` 所在目录解析，可从其他工作目录调用。`--output-dir` 的相对路径按当前工作目录解析；默认输出到本项目 `outputs/`。
+Dataset paths are always resolved relative to the location of `train.py`. Therefore, the training script can also be called from another working directory.
 
-## 保留的实验设置
+Relative paths provided through `--output-dir` are resolved from the current working directory. Without this option, results are saved to:
 
-| 设置 | 默认值 |
-| --- | --- |
-| 历史长度 / 预测长度 | 24 / 24 |
-| 按时间划分训练 / 验证 / 测试 | 70% / 10% / 20% |
-| 时间层级相邻倍率 / 累计倍率 | `[1, 2, 3]` / `[1, 2, 6]` |
-| 批大小 / 学习率 | 64 / 0.001 |
-| 主损失 | Huber |
-| 一致性 / BU 辅助损失权重 | 0.01 / 0.01 |
-| TimesNet d_model / d_ff / 层数 | 16 / 64 / 2 |
-| top_k / num_kernels / dropout | 5 / 6 / 0.1 |
-| 层级隐层维度 / 卷积步数 | 16 / 1 |
-| 最大残差门值 | 0.5 |
+```text
+outputs/
+```
 
-标准化统计量和时间尺度统计量仅用训练集拟合。验证与测试窗口可使用分割点之前的历史输入，预测目标位于对应划分内。时间尺度按原代码做求和聚合；历史长度和预测长度必须能被 6 整除。
+## Default Experimental Settings
 
-每次运行保存最佳模型 `outputs/*_best.pth`，并重新加载后评估测试集。`outputs/results.json` 保存本次配置、各次运行的原始指标和 BU/TD 层级指标表；终端打印均值与样本标准差（ddof=1，单次运行标准差记为 0）。再次使用相同输出目录和配置会覆盖同名文件。
+| Setting                              | Default Value   |
+| ------------------------------------ | --------------- |
+| Input length / prediction length     | 24 / 24         |
+| Train / validation / test split      | 70% / 10% / 20% |
+| Adjacent temporal-scale factors      | `[1, 2, 3]`     |
+| Cumulative temporal scales           | `[1, 2, 6]`     |
+| Batch size                           | 64              |
+| Learning rate                        | 0.001           |
+| Main forecasting loss                | Huber loss      |
+| Hierarchical consistency loss weight | 0.01            |
+| Bottom-up auxiliary loss weight      | 0.01            |
+| Backbone hidden dimension            | 16              |
+| Feed-forward dimension               | 64              |
+| Number of backbone layers            | 2               |
+| Top-k setting                        | 5               |
+| Number of convolution kernels        | 6               |
+| Dropout                              | 0.1             |
+| Hierarchical hidden dimension        | 16              |
+| Hierarchical update steps            | 1               |
+| Maximum residual gate value          | 0.5             |
 
-`--smoke-test` 使用完整数据拟合统计量，但训练、验证、测试各只取一个最多 2 个样本的批次，运行 1 轮、1 个种子，输出到 `outputs/smoke/`。它仅用于安装与流程检查，不能作为论文结果。
+The dataset is divided chronologically into training, validation, and test sets using a 70% / 10% / 20% split.
 
-## 已执行的验证
+Normalization statistics are fitted using the training set only. Statistics required for temporal-scale processing are also computed only from the training data.
 
-- Python 3.11，torch 2.13.0+cu132、numpy 2.4.6、pandas 2.3.3、scikit-learn 1.7.2。
-- 对比原始 Type7：相同种子下参数初始化、state_dict、预测、复合损失和参数梯度逐元素完全一致（CPU）。
-- 8 组数据与原文件逐字节一致；数值有限，层级矩阵为有效的树/森林。
-- CPU 快速端到端测试通过。
-- CUDA 上使用 mixedhumid_sfd 全部数据完成 1 轮训练、最佳权重重载与完整测试：normalized MSE 约 0.090291，MAE 约 0.215858。这是可运行性验证，不是完整论文实验复现。
+Validation and test samples may use historical observations before the corresponding split boundary as input, while all prediction targets remain strictly inside their assigned split.
 
-## 代码来源
+Temporal-scale sequences are constructed using sum aggregation, following the experimental configuration used in the paper.
 
-`type7.py` 保留原模型计算过程；修正了原注释中残留的 Type6 名称。`backbone.py` 从 `TimesNetDH.py` 提取实际使用的主干和两个损失。`layers/` 从原仓库 `ts_benchmark/baselines/time_series_library/layers/` 提取必要类，并保留原仓库许可证。训练部分删除其他模型注册、无关诊断和实验代码，新增命令行参数、结果 JSON、输入检查与快速验证选项。
+The input length and prediction length must both be divisible by 6.
 
-数据来源及发布信息见 [datasets/README.md](datasets/README.md)。本目录不包含训练产物、缓存、已有检查点或其他消融模型。
+## Training and Evaluation
+
+For each run, the model with the best validation performance is saved as:
+
+```text
+outputs/*_best.pth
+```
+
+The best checkpoint is reloaded before evaluation on the test set.
+
+The complete experimental results are stored in:
+
+```text
+outputs/results.json
+```
+
+The JSON file contains:
+
+* the experimental configuration;
+* the raw results from each random seed;
+* forecasting metrics;
+* hierarchical evaluation metrics at different temporal scales and structural levels.
+
+The terminal also reports the mean and sample standard deviation across runs.
+
+The sample standard deviation is computed using:
+
+```text
+ddof = 1
+```
+
+For a single run, the reported standard deviation is set to zero.
+
+Running the same configuration with the same output directory will overwrite files with the same names.
+
+## Smoke Test
+
+The smoke test is intended only to verify the installation and execution pipeline:
+
+```bash
+python train.py --smoke-test --device cpu
+```
+
+It uses the complete training data to estimate normalization and temporal-scale statistics, but training, validation, and testing are each restricted to one batch containing at most two samples.
+
+The smoke test uses:
+
+```text
+1 epoch
+1 random seed
+```
+
+Its results are saved to:
+
+```text
+outputs/smoke/
+```
+
+The smoke test is intended only for checking code execution and must not be used as an experimental result.
+
+## Validation
+
+The following checks were performed before packaging this repository.
+
+### Environment
+
+The code was tested with:
+
+```text
+Python 3.11
+torch 2.13.0+cu132
+numpy 2.4.6
+pandas 2.3.3
+scikit-learn 1.7.2
+```
+
+### Implementation Consistency
+
+The standalone implementation was compared with the implementation used for the experiments.
+
+Under the same random seed, the following quantities were verified to be identical on CPU:
+
+* parameter initialization;
+* model state dictionaries;
+* model predictions;
+* total training loss;
+* parameter gradients.
+
+The comparisons were performed element by element.
+
+### Dataset Validation
+
+All eight packaged datasets were checked against the datasets used in the experiments.
+
+The packaged files are byte-identical to the corresponding experimental files.
+
+Additional checks confirmed that:
+
+* all numerical values are finite;
+* the hierarchy matrices are valid;
+* the structural relationships form valid trees or forests.
+
+### End-to-End Execution
+
+A complete CPU smoke test was successfully executed.
+
+A GPU test was also performed using the complete `mixedhumid_sfd` dataset. The test completed:
+
+* one training epoch;
+* validation;
+* best-checkpoint loading;
+* complete test-set evaluation.
+
+The resulting normalized metrics were approximately:
+
+```text
+MSE: 0.090291
+MAE: 0.215858
+```
+
+These values are reported only as an execution check and are not intended to reproduce the final results reported in the paper.
+
+## Code Organization
+
+`model.py` contains the model computation used in the experiments.
+
+`backbone.py` contains the required forecasting backbone and the auxiliary hierarchical loss functions.
+
+`layers/` contains only the embedding and convolution components required by the model.
+
+`train.py` contains the complete training and evaluation pipeline, including:
+
+* dataset loading;
+* preprocessing;
+* training;
+* validation;
+* early stopping;
+* checkpoint saving and loading;
+* test-set evaluation;
+* multi-seed experiments;
+* metric aggregation;
+* JSON result export;
+* input validation;
+* smoke testing.
+
+Code unrelated to the submitted model and experiments has been removed from this package.
+
+Dataset information and release details are provided in:
+
+```text
+datasets/README.md
+```
+
+This repository does not contain trained checkpoints, cached files, generated experimental outputs, or implementations of additional model variants.

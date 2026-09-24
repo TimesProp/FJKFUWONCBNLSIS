@@ -10,7 +10,7 @@ import torch
 from torch import nn
 from torch.utils.data import Dataset, DataLoader, Subset
 from sklearn.preprocessing import StandardScaler
-from type7 import Model
+from model import Model
 
 ROOT = Path(__file__).resolve().parent
 DATA_PATH = ROOT / 'datasets/mixedhumid_sfd.csv'
