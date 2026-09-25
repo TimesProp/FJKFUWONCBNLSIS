@@ -1,25 +1,3 @@
-"""Type7: Dual-Hierarchy Convolution Network.
-
-Each node at each temporal scale is treated as a hierarchy cell (scale, node).
-
-Instead of explicitly performing gated relation-specific message passing as in
-Type5, Type7 defines a local convolutional receptive field over the product of
-the temporal hierarchy and the structural hierarchy.
-
-For each hierarchy cell, the local neighborhood contains:
-1) center cell,
-2) structural/data parent,
-3) structural/data children,
-4) temporal parent at the adjacent coarser scale,
-5) temporal children at the adjacent finer scale.
-
-A shared hierarchy convolution kernel is applied to these five relation
-positions. Stacking multiple hierarchy convolution layers expands the
-receptive field over both temporal and structural hierarchies.
-
-The final fine-scale hierarchy representation produces one bounded
-error-aware residual correction to the TimesNet base forecast.
-"""
 
 from copy import copy
 
